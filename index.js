@@ -1,52 +1,230 @@
-const mongoose = require('mongoose');
-const MONGO_URI = 'mongodb+srv://agrisciuc96_db_user:Nazarina2510@employee.nutvnjl.mongodb.net/'
-const PersonSchema = new mongoose.Schema({
-    name:{
-        type: String,
-        required: true
-    },
-    age: Number,
-    gender: String,
-    salary: Number
+const express = require('express');
+
+const app = express();
+const fs= require('fs')
+// Built-in middleware for parsing form data and JSON
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Home route
+app.get('/', (req, res) => {
+    res.send('Hello! This is my first Express application.');
 });
 
-const Person = mongoose.model(
-    'modelname',
-    PersonSchema,
-    'personCollection'
-);
+// Start server
+const PORT = 5000;
 
+app.get('/about', function (req, res) {
+    res.send('This is a basic Express application');
+});
 
-async function insertOne(){
-    const doc1 = new Person({
-        name: 'NHQ',
-        age:32,
-        gender: 'Female',
-        salary: 1234
+app.get('/users/:userId/books/:bookId', function (req, res) {
+    res.send(req.params);
+});
+
+app.get('/GetStudents', (req, res) => {
+    fs.readFile('./Students.json', 'utf8', (err, data) => {
+
+        if (err) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                message: 'Error reading Students.json'
+            });
+        }
+
+        res.status(200).json({
+            status: true,
+            statusCode: 200,
+            requestedAt: new Date().toISOString(),
+            requestUrl: req.originalUrl,
+            requestMethod: req.method,
+            studentData: JSON.parse(data)
+        });
     });
-    
-    const savedDoc = await doc1.save();
+});
 
-    console.log('One document inserted');
-    console.log(savedDoc);
-}
+app.get('/GetStudent/:id', (req, res) => {
 
-async function main(){
+    console.log("GetStudent called");
+
+    fs.readFile(__dirname + "/Students.json", "utf8", (err, data) => {
+
+        if (err) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                message: "Error reading Students.json"
+                
+            });
+        }
+
+        const students = JSON.parse(data);
+        const student = students["Student" + req.params.id];
+
+        console.log(student);
+
+        if (student) {
+            res.status(200).json(student);
+        } else {
+            res.status(404).json({
+                status: false,
+                statusCode: 404,
+                message: "Student Not Found",
+                requestedAt: new Date().toISOString(),
+                requestUrl: req.originalUrl,
+                requestMethod: req.method
+            });
+        }
+    });
+});
+// showing html form
+app.get('/studentinfo', (req, res) => {
+    res.sendFile('StudentInfo.html', { root: __dirname });
+});
+
+app.post('/submit-data', (req, res) => {
+
+    const name = req.body.firstName + ' ' + req.body.lastName;
+    const age = req.body.myAge 
+    const Gender = ' Gender: ' + req.body.gender;
+    const qual = 'Qualification: ' + req.body.Qual;
+
+    console.log(req.body.Qual);
+
+    res.send({
+        status: true,
+        message: 'Form Details',
+        data: {
+            name: name,
+            age: age,
+            gender: Gender,
+            qualification: qual
+        }
+    });
+});
+app.use(express.urlencoded({ extended: true }));
+const mongoose = require('mongoose');
+const {
+    insertOne,
+    findAll,
+    countDocuments,
+    findFemalesOver30,
+    deleteManyPersons,
+    updateManyPersons
+} = require('./Week4lab');
+
+
+const MONGO_URI = 'mongodb+srv://agrisciuc96_db_user:Nazarina2510@employee.nutvnjl.mongodb.net/';
+
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('Connected to MongoDB'))
+    .catch(err => console.log(err));
+
+app.post('/insertOne', async (req, res) => {
 
     try {
-        await mongoose.connect(MONGO_URI);
-        console.log('Connected to ${MONGO_URI}');
 
-        await insertOne();
+        const result = await insertOne(
+            req.body.name,
+            req.body.age,
+            req.body.gender,
+            req.body.salary
+        );
 
-    }catch (err){
-        console.error('Error:', err);
+        res.status(201).json({
+            status: true,
+            message: "Person inserted successfully",
+            data: result
+        });
 
-    }finally{
-        await mongoose.connection.close();
-        console.log('Connection closed');
+    } catch (err) {
+
+        res.status(500).json({
+            status: false,
+            message: err.message
+        });
+
     }
-    
-}
+});
+app.get('/Showform', (req, res) => {
 
-main();
+    res.sendFile('Personform.html', {
+        root: __dirname
+    });
+
+});
+app.get('/persons', async (req, res) => {
+    try {
+        console.log("calling all find")
+        const result = await findAll();
+        res.json(result);
+        console.log("result")
+    } catch (err) {
+        res.status(500).json(err);
+    }
+   
+});
+
+app.get('/about', function (req, res) {
+ res.send('This is a basic Express application');
+});
+
+app.get('/users/:userId/books/:bookId', function (req, res) {
+ res.send(req.params);
+});
+
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+
+});
+app.get('/GetStudent/:id', (req, res) => {
+ console.log("GetStudent called");
+ fs.readFile(__dirname + "/Student.json", "utf8", (err, data) => {
+ if (err) {
+ return res.status(500).json({
+ status: false,
+ statusCode: 500,
+message: "Error reading Students.json"
+
+ });
+ }
+ const students = JSON.parse(data);
+ const student = students["Student" + req.params.id];
+ console.log(student);
+ if (student) {
+ res.status(200).json(student);
+ } else {
+ res.status(404).json({
+ status: false,
+ statusCode: 404,
+ message: "Student Not Found",
+ requestedAt: new Date().toISOString(),
+ requestUrl: req.originalUrl,
+ requestMethod: req.method
+ });
+ }
+ });
+});
+// showing html form
+app.get('/studentinfo', (req, res) => {
+ res.sendFile('StudentInfo.html', { root: __dirname });
+});
+app.post('/submit-data', (req, res) => {
+ const name = req.body.firstName + ' ' + req.body.lastName;
+ const age = req.body.myAge
+ const Gender = ' Gender: ' + req.body.gender;
+ const qual = 'Qualification: ' + req.body.Qual;
+ console.log(req.body.Qual);
+ res.send({
+ status: true,
+ message: 'Form Details',
+ data: {
+ name: name,
+ age: age,
+ gender: Gender,
+ qualification: qual
+ }
+ });
+});
